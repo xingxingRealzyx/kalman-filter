@@ -35,8 +35,8 @@
 #include <cmath>
 #include <random>
 
+#include "kalman/attitude/quaternion.h"
 #include "kalman/numerics.h"
-#include "kalman/quaternion.h"
 
 namespace kalman {
 namespace imu {

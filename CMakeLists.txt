@@ -51,7 +51,8 @@ if(KALMAN_WERROR)
 endif()
 
 # ---------------------------------------------------------------------------
-# Library
+# Library: the filters and the math they need, and nothing else.
+#   public API = include/kalman/*.h  (linear, extended, unscented, numerics)
 # ---------------------------------------------------------------------------
 add_library(kalman
     src/extended_kalman_filter.cpp
@@ -65,6 +66,21 @@ target_link_libraries(kalman PUBLIC Eigen3::Eigen)
 target_compile_options(kalman PRIVATE ${KALMAN_WARNINGS})
 
 # ---------------------------------------------------------------------------
+# Optional module: attitude estimation (quaternion math + an IMU model).
+#
+# This lives in include/kalman/attitude/ and is NOT part of kalman::kalman:
+# an IMU model is application code, and a user estimating something else should
+# not have to compile it (or see it in the library's API). It is header-only, so
+# consuming it costs one include; link kalman::attitude to get both.
+# ---------------------------------------------------------------------------
+add_library(kalman_attitude INTERFACE)
+add_library(kalman::attitude ALIAS kalman_attitude)
+target_include_directories(kalman_attitude
+    INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(kalman_attitude INTERFACE kalman::kalman)
+target_compile_options(kalman_attitude INTERFACE ${KALMAN_WARNINGS})
+
+# ---------------------------------------------------------------------------
 # Examples
 # ---------------------------------------------------------------------------
 add_executable(linear_tracking_example examples/linear_tracking_example.cpp)
@@ -76,7 +92,7 @@ target_link_libraries(pendulum_ekf_example PRIVATE kalman::kalman)
 target_compile_options(pendulum_ekf_example PRIVATE ${KALMAN_WARNINGS})
 
 add_executable(imu_attitude_example examples/imu_attitude_example.cpp)
-target_link_libraries(imu_attitude_example PRIVATE kalman::kalman)
+target_link_libraries(imu_attitude_example PRIVATE kalman::attitude)
 target_compile_options(imu_attitude_example PRIVATE ${KALMAN_WARNINGS})
 
 # ---------------------------------------------------------------------------
@@ -87,7 +103,7 @@ enable_testing()
 add_library(kalman_test_support STATIC tests/testing.cpp)
 target_include_directories(kalman_test_support
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(kalman_test_support PUBLIC kalman::kalman)
+target_link_libraries(kalman_test_support PUBLIC kalman::attitude)
 target_compile_options(kalman_test_support PRIVATE ${KALMAN_WARNINGS})
 
 add_executable(kalman_tests

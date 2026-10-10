@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "kalman/quaternion.h"
+#include "kalman/attitude/quaternion.h"
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>

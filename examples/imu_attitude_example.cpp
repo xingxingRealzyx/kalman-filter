@@ -15,8 +15,8 @@
 // Example: Euler angles from a gyroscope and an accelerometer.
 //
 // The estimator is a 4-state extended Kalman filter over the attitude
-// quaternion; the model lives in kalman/imu_attitude_model.h. The gyroscope
-// drives the prediction (it is an input, not a measurement) and the
+// quaternion; the model lives in kalman/attitude/imu_attitude_model.h. The
+// gyroscope drives the prediction (it is an input, not a measurement) and the
 // accelerometer corrects it, which is the classic complementary split:
 // the gyro is accurate over short horizons but drifts, gravity is noisy and
 // blind to yaw but never drifts.
@@ -46,10 +46,10 @@
 #include <iomanip>
 #include <iostream>
 
+#include "kalman/attitude/imu_attitude_model.h"
+#include "kalman/attitude/quaternion.h"
 #include "kalman/extended_kalman_filter.h"
-#include "kalman/imu_attitude_model.h"
 #include "kalman/numerics.h"
-#include "kalman/quaternion.h"
 
 namespace {
 

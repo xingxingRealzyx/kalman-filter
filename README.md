@@ -10,18 +10,34 @@ number the filter reports is defensible, every input is validated, and every
 refused step says why.
 
 ```
-include/kalman/
-  numerics.h                   symmetry / PSD / angle / gain-solve helpers
+include/kalman/                <- the library's public API
   linear_kalman_filter.h       LinearKalmanFilter<N, M, NU>   (header-only)
   extended_kalman_filter.h     ExtendedKalmanFilter, IteratedExtendedKalmanFilter
   unscented_kalman_filter.h    UnscentedKalmanFilter
-  quaternion.h                 quaternion / rotation helpers, verified Jacobians
-  imu_attitude_model.h         gyro + accelerometer attitude model, static calibration
-src/                           implementations (.cpp)
+  numerics.h                   symmetry / PSD / angle / gain-solve helpers
+  attitude/                    <- optional module, header-only (kalman::attitude)
+    quaternion.h               quaternion / rotation helpers, verified Jacobians
+    imu_attitude_model.h       gyro + accelerometer attitude model, static calibration
+src/                           implementations of the three filters
 examples/                      linear_tracking_example, pendulum_ekf_example,
                                imu_attitude_example
-tests/                         test framework + 31 unit tests
+tests/                         test framework + 50 unit tests
 third_party/eigen/             vendored Eigen 3.4.0 (used when no system Eigen)
+```
+
+Two targets, so that a model is opt-in rather than part of the library:
+
+| target | contents | who needs it |
+|---|---|---|
+| `kalman::kalman` | the three filters and `numerics.h` | anyone estimating anything |
+| `kalman::attitude` | `include/kalman/attitude/` (quaternion math + the IMU model) | attitude estimation |
+
+The IMU model is application code, not filter code: if you are tracking a target
+or estimating a state of charge, you should not have to compile it or read around
+it in the library's headers. It is header-only, so opting in costs one include:
+
+```cpp
+#include "kalman/attitude/imu_attitude_model.h"   // and link kalman::attitude
 ```
 
 ## Build and run
@@ -209,7 +225,7 @@ how a filter walks away from reality without any warning. Two conclusions:
 
 `imu_attitude_example` estimates ZYX Euler angles from a gyroscope (prediction) and
 an accelerometer (correction), with an optional magnetometer. The model lives in
-`include/kalman/imu_attitude_model.h` so it can be reused; the state is the attitude
+`include/kalman/attitude/imu_attitude_model.h` so it can be reused; the state is the attitude
 quaternion alone, and the sensor biases are measured by a static calibration rather
 than estimated online.
 
@@ -238,7 +254,7 @@ Three things this makes concrete:
 Online bias estimation was tried first and removed. An accelerometer bias is nearly
 degenerate with attitude (0.6 degrees of tilt looks like 0.1 m/s^2 of bias), and
 with the bias in the state the two feed each other until the filter walks away. The
-static calibration in `imu_attitude_model.h` is both cheaper and more robust.
+static calibration in the attitude module is both cheaper and more robust.
 
 ## Four bugs found while building this (and fixed)
 
@@ -302,8 +318,8 @@ to see.
 
 ## A note on rotation Jacobians
 
-`quaternion.h` derives its Jacobians by central differences rather than in closed
-form, and that is a deliberate retreat. A closed form for $\partial (R(q)v)/\partial q$
+`include/kalman/attitude/quaternion.h` derives its Jacobians by central differences
+rather than in closed form, and that is a deliberate retreat. A closed form for $\partial (R(q)v)/\partial q$
 was written by hand four times, and every version was wrong in a different way (a
 sign on the scalar column, two missing terms, a missing factor of two in the
 $SO(3)$ left Jacobian, and a radial projection applied on the wrong side). Each

@@ -18,10 +18,10 @@
 #include <cstdio>
 #include <random>
 
+#include "kalman/attitude/imu_attitude_model.h"
+#include "kalman/attitude/quaternion.h"
 #include "kalman/extended_kalman_filter.h"
-#include "kalman/imu_attitude_model.h"
 #include "kalman/numerics.h"
-#include "kalman/quaternion.h"
 #include "tests/testing.h"
 
 namespace {
