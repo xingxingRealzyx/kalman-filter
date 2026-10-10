@@ -344,7 +344,6 @@ TEST(LinearKalmanFilter, HandlesSingularInnovationCovariance) {
     // Zero state covariance with a perfectly known state: S = R must still be
     // invertible; with R = 0 the update has to be refused, not to produce NaNs.
     using Filter = kalman::LinearKalmanFilter<2, 1>;
-    Filter::StateMatrix a = Filter::StateMatrix::Identity();
     Filter::MeasurementMatrix c;
     c << 1.0, 0.0;
 

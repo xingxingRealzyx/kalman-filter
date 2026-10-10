@@ -48,7 +48,7 @@ int RunAllTests(const std::string& filter);
 
 // Thrown by a failing CHECK to abort the current test.
 struct FailureException {
-    explicit FailureException(const std::string& message) : message(message) {}
+    explicit FailureException(const std::string& text) : message(text) {}
     std::string message;
 };
 

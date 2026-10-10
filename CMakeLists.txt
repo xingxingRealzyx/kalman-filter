@@ -46,6 +46,25 @@ set(KALMAN_WARNINGS
     -Wall -Wextra -Wpedantic -Wshadow -Wnon-virtual-dtor -Wold-style-cast
     -Wcast-align -Wunused -Woverloaded-virtual -Wconversion -Wsign-conversion
     -Wdouble-promotion -Wformat=2)
+
+# GCC reports false positives *inside Eigen's vectorized kernels*: for a fixed
+# 1x1 Eigen matrix (8 bytes) its auto-vectorizer emits a 16-byte SIMD load/store
+# and then diagnoses its own output as an out-of-bounds access, e.g.
+#
+#   aarch64: arm_neon.h ... "array subscript ... partly outside array bounds of
+#            kalman::LinearKalmanFilter<2, 1>::MeasurementCovariance"
+#   x86_64:  emmintrin.h ... the same diagnosis, via SSE
+#
+# Nothing in this repository can fix that, only suppress it, so the suppression
+# is narrow (GCC only, these three warnings only) and is applied *after* the
+# -Werror appended below, because -Werror converts them into errors. Clang does
+# not produce them, and they are the only reason this project does not treat
+# every warning as an error on every compiler.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    list(APPEND KALMAN_WARNINGS
+        -Wno-array-bounds -Wno-stringop-overread -Wno-stringop-overflow)
+endif()
+
 if(KALMAN_WERROR)
     list(APPEND KALMAN_WARNINGS -Werror)
 endif()

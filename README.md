@@ -337,6 +337,34 @@ request:
 Everything is driven by the same `CMakePresets.json` used locally, so CI cannot
 drift away from what a developer runs by hand.
 
+Three things CI found that no local build did, which is the whole argument for
+having it:
+
+* **A vendored dependency that was not actually in the repository.** Eigen's own
+  `.gitignore` contains the bare rule `core`, which excludes `Eigen/Core` and
+  `Eigen/src/Core/` on a case-sensitive checkout. The machine that vendored the
+  code still had the files on disk, so every local build passed; a fresh Linux
+  checkout did not have them at all. Fixed by dropping the vendored `.gitignore`;
+  `VENDORED.md` explains how to avoid reintroducing it.
+* **A shadowed constructor parameter** (`FailureException(const std::string&
+  message) : message(message)`) that Clang accepts and GCC rejects under
+  `-Wshadow`.
+* **Two assertions that were too tight for a second compiler.** The same
+  deterministic run differs by ~0.5 degrees between AppleClang and GCC 13, which
+  was enough to flip a 2 degree threshold. They are now expressed as multiples of
+  the sensor noise floor plus comparisons between axes, which is both more
+  meaningful and stable across compilers.
+
+Because of that last one, the Linux matrix is also reproduced locally with
+containers while iterating, instead of pushing and waiting:
+
+```bash
+docker run --rm --platform linux/amd64 -v "$PWD":/src -w /src gcc:13 \
+  bash -c "apt-get update -qq && apt-get install -y -qq cmake && \
+           cmake -S . -B /tmp/b -DCMAKE_BUILD_TYPE=Release -DKALMAN_WERROR=ON && \
+           cmake --build /tmp/b -j && cd /tmp/b && ctest"
+```
+
 ## Limitations
 
 * Double precision only by default; the fixed-size filter is templated on the

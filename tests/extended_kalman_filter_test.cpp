@@ -285,9 +285,9 @@ TEST(ExtendedKalmanFilter, FiniteDifferenceJacobianMatchesAnalytic) {
         const double h = kSampleTime / kFineSubSteps;
         Eigen::Vector2d x = start;
         Eigen::Matrix2d phi = Eigen::Matrix2d::Identity();
-        const auto continuous_jacobian = [](const Eigen::Vector2d& state) {
+        const auto continuous_jacobian = [](const Eigen::Vector2d& at) {
             Eigen::Matrix2d jacobian;
-            jacobian << 0.0, 1.0, -kGravityOverLength * std::cos(state(0)),
+            jacobian << 0.0, 1.0, -kGravityOverLength * std::cos(at(0)),
                 -kDamping;
             return jacobian;
         };
