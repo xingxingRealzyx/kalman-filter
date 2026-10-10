@@ -1,5 +1,7 @@
 # Kalman filter library (C++17)
 
+[![ci](https://github.com/xingxingRealzyx/kalman-filter/actions/workflows/ci.yml/badge.svg)](https://github.com/xingxingRealzyx/kalman-filter/actions/workflows/ci.yml)
+
 A small, self-contained state estimation library: linear Kalman filter, extended
 Kalman filter (with the iterated variant), and unscented Kalman filter. Eigen for
 linear algebra, no other dependencies, C++17, Google style with four-space
@@ -42,20 +44,37 @@ it in the library's headers. It is header-only, so opting in costs one include:
 
 ## Build and run
 
+Requires CMake 3.21+ (for `CMakePresets.json`) and a C++17 compiler. Eigen is
+picked up from the system when available (`brew install eigen`), otherwise the
+vendored copy under `third_party/eigen` is used, so nothing has to be installed.
+
 ```bash
-cmake -S kalman-filter -B kalman-filter/build -DCMAKE_BUILD_TYPE=Release
-cmake --build kalman-filter/build -j
-./kalman-filter/build/kalman_tests              # 31 tests, also via `ctest` in build/
-./kalman-filter/build/linear_tracking_example
-./kalman-filter/build/pendulum_ekf_example
-./kalman-filter/build/imu_attitude_example
+cmake --preset release            # or: debug, ci, sanitizers
+cmake --build --preset release -j
+ctest --preset release            # 50 tests
+
+./build/release/linear_tracking_example
+./build/release/pendulum_ekf_example
+./build/release/imu_attitude_example
 ```
 
-Eigen 3.3+ is picked up from the system when available (`brew install eigen`),
-otherwise the vendored copy under `third_party/eigen` is used. The library
-builds warning-free with `-Wall -Wextra -Wpedantic -Wshadow -Wconversion
--Wsign-conversion -Wold-style-cast -Wdouble-promotion -Wformat=2`; add
-`-DKALMAN_WERROR=ON` to turn warnings into errors in CI.
+| preset | what it is for |
+|---|---|
+| `release` | optimized build with the strict warning set |
+| `debug` | `-O0 -g`; Eigen's internal assertions are active |
+| `ci` | `release` plus `-Werror` (what CI builds) |
+| `sanitizers` | `debug` plus AddressSanitizer and UndefinedBehaviorSanitizer |
+
+Without presets, the equivalent of `release` is:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+```
+
+The library builds warning-free with `-Wall -Wextra -Wpedantic -Wshadow
+-Wconversion -Wsign-conversion -Wold-style-cast -Wdouble-promotion -Wformat=2`;
+`-DKALMAN_WERROR=ON` turns warnings into errors.
 
 ## Quick start
 
@@ -300,6 +319,23 @@ to see.
 | numerics | symmetry, PSD detection (including the round-off tolerance), singular regularization, angle wrapping, angle differences across the $\pm\pi$ boundary |
 | quaternion | Hamilton product against Eigen, left/right multiplication matrices, rotation matrix orthonormality, the radial identity $J q = 0$ for both Jacobians, both Jacobians against central differences, ZYX Euler round trips across all quadrants |
 | attitude (IMU) | quaternion propagation matches an exact axis-angle rotation, tangent-space property of the transition Jacobian, accelerometer/magnetometer Jacobians against central differences, instantaneous observability rank (gravity fixes two directions, magnetometer adds the third), static calibration accuracy, end-to-end roll/pitch tracking plus the yaw-drift comparison |
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and on every pull
+request:
+
+* **Ubuntu and macOS**, each in `ci` (`-Werror`) and `debug` configurations:
+  configure, build, run all 50 tests through CTest, then run all three examples.
+  Running the examples matters - they are the documented usage, so a broken
+  example is a broken README.
+* **AddressSanitizer + UndefinedBehaviorSanitizer** on Ubuntu (the `sanitizers`
+  preset, with LeakSanitizer enabled). This is the job that earns its keep: it is
+  what catches an out-of-bounds write or an uninitialized read inside a
+  covariance update, which a plain build would happily run past.
+
+Everything is driven by the same `CMakePresets.json` used locally, so CI cannot
+drift away from what a developer runs by hand.
 
 ## Limitations
 

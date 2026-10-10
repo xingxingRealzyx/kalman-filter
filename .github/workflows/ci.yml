@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel a run that is superseded by a newer push on the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }} / ${{ matrix.preset }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: .
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        preset: [ci, debug]
+    # cmake, ninja and a C++17 compiler are preinstalled on both runner images,
+    # and Eigen is vendored, so nothing needs to be installed: the job is a
+    # configure, a build and a test run.
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Toolchain versions
+        run: |
+          cmake --version
+          c++ --version | head -1
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }} --parallel 4
+
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}
+
+      - name: Run the examples
+        # The examples are the documented usage, so they have to actually run:
+        # a broken example is a broken README.
+        run: |
+          ./build/${{ matrix.preset }}/linear_tracking_example
+          ./build/${{ matrix.preset }}/pendulum_ekf_example
+          ./build/${{ matrix.preset }}/imu_attitude_example
+
+  sanitizers:
+    name: ubuntu-latest / ASan + UBSan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake --preset sanitizers
+
+      - name: Build
+        run: cmake --build --preset sanitizers --parallel 4
+
+      - name: Test
+        # ASAN_OPTIONS/UBSAN_OPTIONS come from the preset. Linux also supports
+        # LeakSanitizer, so turn leak checking on explicitly here (on macOS it
+        # does not exist, which is why the preset itself stays portable).
+        env:
+          ASAN_OPTIONS: abort_on_error=1:strict_string_checks=1:detect_leaks=1
+        run: ctest --preset sanitizers
